@@ -1,0 +1,20 @@
+{
+  "name": "catprint",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CatPrint: 100% client-side Web Bluetooth printing service and web app for FunPrint, iPrint, and 58mm BLE thermal printers",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:docs": "tsc --noEmit && vite build --outDir ../docs --emptyOutDir && touch ../docs/.nojekyll",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/web-bluetooth": "^0.0.20",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.8"
+  }
+}

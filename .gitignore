@@ -1,0 +1,6 @@
+.build/
+.DS_Store
+*.app
+web/node_modules/
+web/dist/
+docs

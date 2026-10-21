@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- MANDATORY: Declare support for both light and dark themes -->
+    <meta name="color-scheme" content="light dark" />
+    <title>CatPrint • Web Bluetooth Thermal &amp; Sticker Printer</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <!-- Browser Web Bluetooth Compatibility Banner -->
+    <div id="ble-unsupported-banner" class="warning-banner" hidden role="alert">
+      <span aria-hidden="true">⚠️</span>
+      <div>
+        <strong>Web Bluetooth API is not available in this browser.</strong>
+        You can still design labels, preview receipts, and test dithering, but to connect &amp; print over Bluetooth please open this page in
+        <strong>Google Chrome</strong>, <strong>Microsoft Edge</strong>, <strong>Brave</strong> (on macOS, Windows, Linux, or Android), or <strong>Bluefy</strong> on iOS.
+      </div>
+    </div>
+
+    <div class="app-shell">
+      <!-- LEFT SIDEBAR: Connection, Paper Media, Calibration, Actions, Logs -->
+      <aside class="sidebar" aria-label="Printer Controls and Settings">
+        <header class="brand-header">
+          <div class="brand-title">
+            <span class="brand-icon" aria-hidden="true">🐱🖨️</span>
+            <div>
+              <h1>CatPrint</h1>
+              <p class="brand-subtitle">Web Bluetooth Thermal &amp; Sticker Printer</p>
+            </div>
+            <a
+              href="https://github.com/bossly/catprint"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="github-link-btn"
+              title="View on GitHub"
+              aria-label="View source repository on GitHub"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+              </svg>
+            </a>
+          </div>
+        </header>
+
+        <!-- 1. Printer Connection Card -->
+        <section class="card" aria-labelledby="card-conn-title">
+          <h2 id="card-conn-title" class="card-title">
+            <span aria-hidden="true">📡</span> Printer Connection
+          </h2>
+
+          <div class="connection-status-row">
+            <span id="status-indicator" class="status-badge" data-state="disconnected">
+              <span id="status-icon" aria-hidden="true">○</span>
+              <span id="status-text">Disconnected</span>
+            </span>
+            <button id="btn-disconnect" type="button" class="btn btn-danger-ghost btn-sm" hidden>
+              Disconnect
+            </button>
+          </div>
+
+          <div id="connect-controls" class="stack-sm">
+            <div class="connect-btn-group">
+              <button id="btn-connect-target" type="button" class="btn btn-primary btn-block">
+                <span aria-hidden="true">⚡</span>
+                <span id="btn-connect-target-label">Connect to MX06</span>
+              </button>
+              <button id="btn-scan-any" type="button" class="btn btn-secondary btn-block">
+                <span aria-hidden="true">🔍</span> Choose Printer...
+              </button>
+            </div>
+
+            <div class="field-row">
+              <label for="input-target-name" class="field-label">Target Prefix:</label>
+              <input
+                id="input-target-name"
+                type="text"
+                class="input-sm"
+                value="MX06"
+                placeholder="MX06"
+                aria-label="Target BLE device name prefix"
+              />
+            </div>
+
+            <label class="checkbox-label">
+              <input id="chk-accept-all" type="checkbox" />
+              <span>Show all Bluetooth devices in chooser</span>
+            </label>
+
+            <details class="disclosure">
+              <summary>📋 Supported Printers List</summary>
+              <div class="disclosure-body stack-sm">
+                <div class="supported-printers-box">
+                  <p class="caption-text"><strong>FunPrint &amp; MX Series:</strong> MX05, MX06, MX08, MX09, MX10, MXTP, BQ05, Q5, FunPrint</p>
+                  <p class="caption-text"><strong>iPrint &amp; Cat Series:</strong> GB01, GB02, GB03, GT01, YT01, WalkPrint</p>
+                  <p class="caption-text"><strong>Universal Standard:</strong> Any 58mm / 203 DPI thermal printer using 0x5178 framing and service AE30 / AF30.</p>
+                </div>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <!-- 2. Paper Media Card -->
+        <section class="card" aria-labelledby="card-media-title">
+          <h2 id="card-media-title" class="card-title">
+            <span aria-hidden="true">🏷️</span> Paper Media
+          </h2>
+
+          <!-- Quick Segmented Toggle: Sticker vs Roll -->
+          <div class="segmented-control" role="group" aria-label="Paper Kind">
+            <button
+              id="seg-sticker"
+              type="button"
+              class="seg-btn active"
+              aria-pressed="true"
+            >
+              🏷️ Sticker (52×15)
+            </button>
+            <button
+              id="seg-roll"
+              type="button"
+              class="seg-btn"
+              aria-pressed="false"
+            >
+              🧾 Roll (57mm)
+            </button>
+          </div>
+
+          <div class="field-stack">
+            <label for="select-paper-preset" class="field-label">Paper Preset:</label>
+            <select id="select-paper-preset" class="select-input">
+              <option value="sticker_52x15">Sticker: 52 × 15 mm (Default)</option>
+              <option value="sticker_52x10">Sticker: 52 × 10 mm</option>
+              <option value="sticker_52x30">Sticker: 52 × 30 mm</option>
+              <option value="sticker_50x15">Sticker: 50 × 15 mm</option>
+              <option value="sticker_50x30">Sticker: 50 × 30 mm</option>
+              <option value="continuous_57">Continuous Roll (57 mm)</option>
+              <option value="custom">Custom Sticker Size...</option>
+            </select>
+          </div>
+
+          <!-- Custom Sticker Dimensions -->
+          <div id="custom-size-fields" class="sub-panel" hidden>
+            <div class="field-row">
+              <label for="input-custom-width" class="field-label">Width (mm):</label>
+              <input id="input-custom-width" type="number" class="input-sm" min="20" max="58" step="1" value="52" />
+            </div>
+            <div class="field-row">
+              <label for="input-custom-height" class="field-label">Height (mm):</label>
+              <input id="input-custom-height" type="number" class="input-sm" min="8" max="150" step="1" value="15" />
+            </div>
+          </div>
+
+          <!-- Sticker-specific Controls -->
+          <div id="sticker-controls" class="stack-sm">
+            <div class="field-row">
+              <span class="field-label">Vertical Align:</span>
+              <div class="segmented-control seg-sm" role="group" aria-label="Sticker Vertical Alignment">
+                <button type="button" class="seg-btn active" data-valign="top" aria-pressed="true">Top</button>
+                <button type="button" class="seg-btn" data-valign="center" aria-pressed="false">Center</button>
+                <button type="button" class="seg-btn" data-valign="bottom" aria-pressed="false">Bottom</button>
+              </div>
+            </div>
+
+            <details class="disclosure">
+              <summary>Sticker Calibration &amp; Offsets</summary>
+              <div class="disclosure-body stack-sm">
+                <div class="field-row">
+                  <label for="input-sticker-gap" class="field-label">Label Gap (mm):</label>
+                  <input id="input-sticker-gap" type="number" class="input-sm" min="0" max="25" step="1" value="8" />
+                </div>
+                <div class="field-row">
+                  <label for="input-top-offset" class="field-label">Top Shift (mm):</label>
+                  <input id="input-top-offset" type="number" class="input-sm" min="-10" max="10" step="1" value="0" />
+                </div>
+                <div class="field-row">
+                  <label for="input-h-shift" class="field-label">H-Shift (mm):</label>
+                  <input id="input-h-shift" type="number" class="input-sm" min="-5" max="5" step="0.5" value="0" />
+                </div>
+                <label class="checkbox-label">
+                  <input id="chk-trim-top" type="checkbox" checked />
+                  <span>Trim leading blank top margin</span>
+                </label>
+                <label class="checkbox-label">
+                  <input id="chk-advance-next" type="checkbox" checked />
+                  <span>Advance to next sticker after print</span>
+                </label>
+                <p id="pitch-summary" class="caption-text">Pitch: 23mm (184 dot lines)</p>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <!-- 3. Paper Handling & Hardware Calibration Card -->
+        <section class="card" aria-labelledby="card-calib-title">
+          <h2 id="card-calib-title" class="card-title">
+            <span aria-hidden="true">⚙️</span> Paper Feed &amp; Calibration
+          </h2>
+
+          <div class="btn-row-3">
+            <button id="btn-retract-now" type="button" class="btn btn-secondary btn-sm" title="Retract paper backward">
+              ↑ Retract
+            </button>
+            <button id="btn-feed-now" type="button" class="btn btn-secondary btn-sm" title="Feed paper forward">
+              ↓ Feed
+            </button>
+            <button id="btn-advance-label" type="button" class="btn btn-secondary btn-sm" title="Advance exactly 1 sticker pitch">
+              ⏭ 1 Label
+            </button>
+          </div>
+
+          <details class="disclosure">
+            <summary>Hardware &amp; Darkness Settings</summary>
+            <div class="disclosure-body stack-sm">
+              <div class="field-stack">
+                <label for="select-feed-mode" class="field-label">Paper Feed Mode:</label>
+                <select id="select-feed-mode" class="select-input">
+                  <option value="blankLines">Blank Lines (FunPrint / MX workaround)</option>
+                  <option value="nativeCommand">Hardware Command 0xA1 (iPrint / GB01)</option>
+                </select>
+              </div>
+
+              <div class="field-row">
+                <label for="input-feed-amount" class="field-label">Feed Lines/Steps:</label>
+                <input id="input-feed-amount" type="number" class="input-sm" min="0" max="300" step="8" value="80" />
+              </div>
+
+              <div class="field-row">
+                <label for="input-retract-amount" class="field-label">Retract Steps:</label>
+                <input id="input-retract-amount" type="number" class="input-sm" min="0" max="300" step="8" value="80" />
+              </div>
+
+              <label class="checkbox-label">
+                <input id="chk-retract-before" type="checkbox" />
+                <span>Retract before printing</span>
+              </label>
+
+              <div class="field-stack">
+                <div class="field-row">
+                  <label for="range-energy" class="field-label">Thermal Darkness:</label>
+                  <span id="label-energy-val" class="mono-val">44% (0x7000)</span>
+                </div>
+                <input id="range-energy" type="range" min="8192" max="65535" step="1024" value="28672" />
+              </div>
+
+              <div class="field-stack">
+                <div class="field-row">
+                  <label for="range-delay" class="field-label">Line Pacing Delay:</label>
+                  <span id="label-delay-val" class="mono-val">15 ms</span>
+                </div>
+                <input id="range-delay" type="range" min="5" max="40" step="1" value="15" />
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- 4. Primary Print Actions -->
+        <section class="card action-card" aria-label="Print Actions">
+          <div id="print-progress-box" class="progress-box" hidden>
+            <div class="field-row">
+              <span id="progress-label" class="caption-text">Printing... 0%</span>
+              <button id="btn-cancel-print" type="button" class="btn btn-danger-ghost btn-sm">Cancel</button>
+            </div>
+            <progress id="print-progress-bar" max="100" value="0"></progress>
+          </div>
+
+          <button id="btn-print-main" type="button" class="btn btn-primary btn-lg btn-block">
+            <span aria-hidden="true">🖨️</span>
+            <span id="btn-print-main-label">Print Sticker (52×15mm)</span>
+          </button>
+
+          <button id="btn-print-date" type="button" class="btn btn-accent btn-block">
+            <span aria-hidden="true">📅</span>
+            <span id="btn-print-date-label">Print Current Date</span>
+          </button>
+
+          <button id="btn-print-test" type="button" class="btn btn-secondary btn-sm btn-block">
+            🏁 Print Hardware Test Pattern
+          </button>
+        </section>
+
+        <!-- 5. Activity Log -->
+        <section class="card log-card" aria-labelledby="card-log-title">
+          <div class="field-row">
+            <h2 id="card-log-title" class="card-title">
+              <span aria-hidden="true">📋</span> Activity Log
+            </h2>
+            <button id="btn-clear-logs" type="button" class="btn btn-ghost btn-xs">Clear</button>
+          </div>
+          <div id="log-console" class="log-console" role="log" aria-live="polite"></div>
+        </section>
+      </aside>
+
+      <!-- RIGHT MAIN WORKSPACE: Editor, Photo Dithering & Live Thermal Preview -->
+      <main class="workspace">
+        <!-- Mode Switcher & Templates Bar -->
+        <div class="workspace-topbar">
+          <div class="segmented-control" role="tablist" aria-label="Print Source Mode">
+            <button
+              id="tab-text-mode"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              class="seg-btn active"
+            >
+              ✏️ Text &amp; Label Editor
+            </button>
+            <button
+              id="tab-photo-mode"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              class="seg-btn"
+            >
+              🖼️ Photo / Image Dither
+            </button>
+          </div>
+
+          <div class="template-actions">
+            <button id="btn-autofit" type="button" class="btn btn-secondary btn-sm" title="Automatically scale font size to fit sticker height">
+              ✨ Auto-Fit to Sticker
+            </button>
+            <button id="btn-sample-sticker" type="button" class="btn btn-ghost btn-sm">
+              Sticker Sample
+            </button>
+            <button id="btn-sample-receipt" type="button" class="btn btn-ghost btn-sm">
+              Receipt Sample
+            </button>
+          </div>
+        </div>
+
+        <!-- Typography & Dithering Toolbar -->
+        <section class="toolbar-card" aria-label="Formatting and Dithering Toolbar">
+          <!-- Text formatting controls (shown in Text Mode) -->
+          <div id="text-toolbar-group" class="toolbar-row">
+            <div class="toolbar-item">
+              <label for="select-font" class="toolbar-label">Font</label>
+              <select id="select-font" class="select-input select-sm">
+                <option value="System">System Sans</option>
+                <option value="Monospaced">Monospaced</option>
+                <option value="Serif">Serif</option>
+              </select>
+            </div>
+
+            <div class="toolbar-item">
+              <label for="input-font-size" class="toolbar-label">Size (px)</label>
+              <div class="inline-pair">
+                <input id="range-font-size" type="range" min="8" max="64" step="1" value="16" aria-label="Font size slider" />
+                <input id="input-font-size" type="number" class="input-xs" min="8" max="96" value="16" />
+              </div>
+            </div>
+
+            <div class="toolbar-item">
+              <span class="toolbar-label">Style</span>
+              <button id="btn-bold" type="button" class="btn btn-toggle active" aria-pressed="true" title="Bold text">
+                <strong>B</strong> Bold
+              </button>
+            </div>
+
+            <div class="toolbar-item">
+              <span class="toolbar-label">Align</span>
+              <div class="segmented-control seg-sm" role="group" aria-label="Horizontal Text Alignment">
+                <button type="button" class="seg-btn" data-align="left" aria-pressed="false">Left</button>
+                <button type="button" class="seg-btn active" data-align="center" aria-pressed="true">Center</button>
+                <button type="button" class="seg-btn" data-align="right" aria-pressed="false">Right</button>
+              </div>
+            </div>
+
+            <div class="toolbar-item">
+              <label for="select-border" class="toolbar-label">Border Frame</label>
+              <select id="select-border" class="select-input select-sm">
+                <option value="none">None</option>
+                <option value="single">Single Box</option>
+                <option value="rounded">Rounded Box</option>
+                <option value="double">Double Box</option>
+                <option value="topBottom">Top &amp; Bottom Bars</option>
+              </select>
+            </div>
+
+            <div class="toolbar-item">
+              <label for="input-line-spacing" class="toolbar-label">Line Gap</label>
+              <input id="input-line-spacing" type="number" class="input-xs" min="0" max="24" value="2" />
+            </div>
+          </div>
+
+          <!-- Shared Binarization / Dither Controls -->
+          <div class="toolbar-row toolbar-row-sub">
+            <div class="toolbar-item">
+              <label for="select-dither" class="toolbar-label">Binarization Engine</label>
+              <select id="select-dither" class="select-input select-sm">
+                <option value="threshold">Crisp (1-Bit Threshold)</option>
+                <option value="floydSteinberg">Photo (Floyd-Steinberg Dither)</option>
+              </select>
+            </div>
+
+            <div id="threshold-control-item" class="toolbar-item">
+              <label for="range-threshold" class="toolbar-label">
+                Threshold: <span id="label-threshold-val" class="mono-val">60%</span>
+              </label>
+              <input id="range-threshold" type="range" min="0.1" max="0.9" step="0.05" value="0.6" />
+            </div>
+          </div>
+        </section>
+
+        <!-- Editor & Preview Split Area -->
+        <div class="editor-preview-grid">
+          <!-- Left column: Text Editor OR Photo Upload -->
+          <section class="source-panel" aria-label="Print Content Input">
+            <!-- Text Mode Panel -->
+            <div id="panel-text-input" class="input-panel">
+              <div class="panel-header">
+                <h3>Label / Receipt Text</h3>
+                <span class="caption-text">Supports multi-line text, symbols &amp; emoji</span>
+              </div>
+              <textarea
+                id="textarea-print"
+                class="print-textarea"
+                rows="8"
+                placeholder="Type text to print on your thermal printer..."
+              >CAT PRINTER • MX06
+Sticker: 52 × 15 mm
+Status: READY [OK]</textarea>
+            </div>
+
+            <!-- Photo Mode Panel -->
+            <div id="panel-photo-input" class="input-panel" hidden>
+              <div class="panel-header">
+                <h3>Image / Sticker Graphic</h3>
+                <span class="caption-text">Automatically scaled to 384 dots &amp; dithered</span>
+              </div>
+
+              <label for="file-photo-input" id="photo-dropzone" class="photo-dropzone">
+                <input id="file-photo-input" type="file" accept="image/*" hidden />
+                <span class="dropzone-icon" aria-hidden="true">📷</span>
+                <span class="dropzone-title">Click to choose an image or drag &amp; drop here</span>
+                <span class="dropzone-hint">PNG, JPEG, WebP, SVG — converted to 384px 1-bit thermal lines</span>
+              </label>
+
+              <div id="photo-meta-bar" class="field-row" hidden>
+                <span id="photo-info-text" class="caption-text">Loaded image</span>
+                <button id="btn-clear-photo" type="button" class="btn btn-ghost btn-xs">Remove Image</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Right column: Live 1-Bit Thermal Preview -->
+          <section class="preview-panel" aria-label="Live Thermal Output Preview">
+            <div class="panel-header">
+              <div>
+                <h3 id="preview-title">DIE-CUT STICKER PREVIEW (52 × 15 mm)</h3>
+                <p id="preview-subtitle" class="caption-text">384 dots wide (48 bytes/line) • 203 DPI</p>
+              </div>
+              <span id="fit-badge" class="fit-badge" data-fits="true">
+                <span id="fit-badge-icon" aria-hidden="true">✓</span>
+                <span id="fit-badge-text">Fits (64/120 lines)</span>
+              </span>
+            </div>
+
+            <div class="preview-stage">
+              <!-- Sticker Backing Roll Visualization -->
+              <div id="sticker-roll-stage" class="sticker-roll-backing">
+                <div class="backing-top-leader">
+                  <span>Thermal Roll Feed Direction ↑</span>
+                </div>
+
+                <!-- Active Die-Cut Sticker -->
+                <div id="sticker-card-frame" class="sticker-card-frame">
+                  <div id="sticker-printable-zone" class="sticker-printable-zone">
+                    <canvas id="thermal-preview-canvas" width="384" height="120"></canvas>
+                  </div>
+                </div>
+
+                <!-- Inter-label Gap & Next Label Indicator -->
+                <div id="sticker-gap-indicator" class="sticker-gap-indicator">
+                  <div class="gap-arrows">
+                    <span>↕ <strong id="gap-label-mm">8mm gap</strong> (<span id="gap-label-dots">64</span> dots)</span>
+                  </div>
+                  <div class="next-sticker-ghost">
+                    <span>Next Label on Roll</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
